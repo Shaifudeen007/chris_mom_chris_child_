@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("USER") // ADMIN, USER
+  floor        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  asMom        GameParticipant[] @relation("MomRelation")
+  asChild      GameParticipant[] @relation("ChildRelation")
+  asParticipant Match[]          @relation("ParticipantMatch")
+
+  createdTasks Mission[] @relation("MomTasks")
+  assignedTasks Mission[] @relation("ChildTasks")
+}
+
+model Game {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  status      String   @default("PENDING") // PENDING, ACTIVE, REVEALED, COMPLETED
+  createdAt   DateTime @default(now())
+
+  participants GameParticipant[]
+  matches      Match[]
+  missions     Mission[]
+}
+
+model GameParticipant {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  userId    Int
+  role      String   // MOM, CHILD
+
+  game      Game     @relation(fields: [gameId], references: [id])
+  userMom   User?    @relation("MomRelation", fields: [userId], references: [id])
+  userChild User?    @relation("ChildRelation", fields: [userId], references: [id])
+
+  @@unique([gameId, userId, role])
+}
+
+model Match {
+  id          Int      @id @default(autoincrement())
+  gameId      Int
+  momId       Int
+  childId     Int
+  secretCode  String   @unique
+
+  game        Game     @relation(fields: [gameId], references: [id])
+  user        User     @relation("ParticipantMatch", fields: [momId], references: [id])
+}
+
+model Mission {
+  id          Int      @id @default(autoincrement())
+  gameId      Int
+  momId       Int
+  childId     Int
+  title       String
+  description String
+  points      Int      @default(0)
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  game        Game     @relation(fields: [gameId], references: [id])
+  mom         User     @relation("MomTasks", fields: [momId], references: [id])
+  child       User     @relation("ChildTasks", fields: [childId], references: [id])
+}
